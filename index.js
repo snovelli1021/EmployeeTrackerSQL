@@ -133,7 +133,7 @@ function newDepartment() {
     db.query(
       "INSERT INTO department (name) VALUES (?)",
       [response.newDepartment],
-      function (err, res) {
+      function (err, results) {
         if (err) {
           console.log(err);
         } else {
@@ -151,80 +151,106 @@ function newDepartment() {
 function newRole() {
   console.log("Adding a new role");
 
-  const roleArray = [
-    {
-      type: "input",
-      name: "Add Role",
-      message: "What is the new role?",
-    },
-    {
-      type: "input",
-      name: "newSalary",
-      message: "What is the salary for the new role?",
-    },
-    {
-      type: "list",
-      name: "newDepartment",
-      message: "Which department is the new role in?",
-    },
-  ];
-
-  inquirer.prompt(roleArray).then((response) => {
-    db.query(
-      "INSERT INTO role (title, salary, department_id) VALUES  (?,?,?);",
-      [response.newRole],
-      function (err, res) {
-        if (err) {
-          console.log(err);
-        } else {
-          console.log(`${response.newRole} has been added to roles`);
-          startingPrompt();
-        }
-      }
-    );
+  const roleArray = "SELECT id FROM department";
+  db.query(roleArray, (err, results) => {
+    if (err) throw err;
+    inquirer
+      .prompt([
+        {
+          type: "input",
+          name: "addRole",
+          message: "What is the new role?",
+        },
+        {
+          type: "input",
+          name: "newSalary",
+          message: "What is the salary for the new role?",
+        },
+        {
+          type: "list",
+          name: "newDepartment",
+          message: "Which department number does the new role belong to?",
+          choices: function () {
+            let departmentOptions = results.map((choice) => choice.id);
+            return departmentOptions;
+          },
+        },
+      ])
+      .then((response) => {
+        db.query(
+          "INSERT INTO role (title, salary, department_id) VALUES (?); ",
+          [[response.addRole, response.newSalary, response.newDepartment]],
+          function (err, results) {
+            if (err) {
+              console.log(err);
+            } else {
+              console.log(`${response.addRole} has been added to roles`);
+              startingPrompt();
+            }
+          }
+        );
+      });
   });
 }
 
 // Function that lets the user add a new employee to the table.
 function newEmployee() {
   console.log("Adding a new employee");
+  const employeeArray = "SELECT id FROM role";
 
-  const employeeArray = [
-    {
-      type: "input",
-      name: "Add Employee",
-      message: "What is the new employee's first name?",
-    },
-    {
-      type: "input",
-      name: "employeeLastName",
-      message: "What is their last name?",
-    },
-    {
-      type: "input",
-      name: "employeeRole",
-      message: "What is their role?",
-    },
-    {
-      type: "input",
-      name: "employeeManager",
-      message: "What is the name of the new employee's manager?",
-    },
-  ];
+  db.query(employeeArray, (err, results) => {
+    if (err) throw err;
+    inquirer
+      .prompt([
+        {
+          type: "input",
+          name: "Add Employee",
+          message: "What is the new employee's first name?",
+        },
+        {
+          type: "input",
+          name: "employeeLastName",
+          message: "What is their last name?",
+        },
 
-  inquirer.prompt(employeeArray).then((response) => {
-    db.query(
-      "INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?,?,?,?)",
-      [response.newEmployee],
-      function (err, res) {
-        if (err) {
-          console.log(err);
-        } else {
-          console.log(`${response.newEmployee} has been added to employees`);
-          startingPrompt();
-        }
-      }
-    );
+        {
+          type: "input",
+          name: "employeeManager",
+          message: "What is the name of the new employee's manager?",
+        },
+        {
+          type: "input",
+          name: "employeeRole",
+          message: "What is their role?",
+          choices: function () {
+            let roleOptions = results.map((choice) => choice.id);
+            return roleOptions;
+          },
+        },
+      ])
+      .then((response) => {
+        db.query(
+          "INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?)",
+          [
+            [
+              response.first_name,
+              response.last_name,
+              response.manager,
+              response.roles,
+            ],
+          ],
+          function (err, results) {
+            if (err) {
+              console.log(err);
+            } else {
+              console.log(
+                `${response.newEmployee} has been added to employees`
+              );
+              startingPrompt();
+            }
+          }
+        );
+      });
   });
 }
 
@@ -232,28 +258,48 @@ function newEmployee() {
 function changeRole() {
   console.log("Updating an employee's role");
 
-  const employeeArray = [
-    {
-      type: "input",
-      name: "Change Role",
-      message: "What is the employee's new role?",
-    },
-  ];
+  const updateRole = `SELECT employee.id, CONCAT(employee.first_name, ' ', employee.last_name) AS employee_name 
+  FROM employee`;
+  db.query(updateRole, (err, results) => {
+    if (err) throw err;
+    const IdOptions = function () {
+      let employeeOptions = results.map((choice) => choice.id);
+      return employeeOptions;
+    };
 
-  inquirer.prompt(employeeArray).then((response) => {
-    db.query(
-      "INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES  (?,?,?,?)",
-      [response.changeRole],
-      function (err, res) {
-        if (err) {
-          console.log(err);
-        } else {
-          console.log(
-            `The employee's new role has been updated to ${response.changeRole}.`
-          );
-          startingPrompt();
-        }
-      }
-    );
+    inquirer
+      .prompt([
+        {
+          type: "list",
+          name: "Change Role",
+          message:
+            "Choose the ID of the employee who's role you want to update.",
+          choices: IdOptions,
+        },
+      ])
+      .then((response) => {
+        newID = response;
+
+        const employeeArray = "SELECT id FROM role";
+        db.query(employeeArray, (err, results) => {
+          if (err) throw err;
+          inquirer
+            .prompt([
+              {
+                type: "input",
+                name: "Change Role",
+                message: "What is the ID for the employee's new role?",
+                choices: function () {
+                  let roleOptions = results.map((choice) => choice.id);
+                  return roleOptions;
+                },
+              },
+            ])
+            .then((response) => {
+              db.query("UPDATE employee SET role_id=? WHERE id=?;"),
+                startingPrompt();
+            });
+        });
+      });
   });
 }

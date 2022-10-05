@@ -1,5 +1,3 @@
-DROP DATABASE IF EXISTS sample_db;
-
 DROP DATABASE IF EXISTS staff_db;
 CREATE DATABASE staff_db;
 
